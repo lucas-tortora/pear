@@ -48,12 +48,18 @@ module.exports = async (ipc, argv = cmdArgs) => {
       Specify a link to seed a project.
     `,
     arg('<link>', 'Pear link to seed'),
-    flag('--no-tty', 'Disable tty features'),
+    flag(
+      '--no-tty',
+      'Disable the live terminal UI and print plain log lines instead (interactive UI is on by default)'
+    ),
     flag(
       '--until-sync <key>',
-      'Exit when specified peer fully sync. Pass multiple flags to wait for more peers'
+      'Exit once the peer with this public key has fully synced (repeat the flag to wait on more than one peer)'
     ).multiple(),
-    flag('--stats-interval <ms>', 'Stats refresh interval in milliseconds'),
+    flag(
+      '--stats-interval <ms>',
+      'How often to refresh the live stats display, in milliseconds (defaults to 500ms, or 3000ms with --no-tty)'
+    ),
     flag('--json', 'Newline delimited JSON output'),
     commands.seed
   )
@@ -67,16 +73,17 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'stage',
     summary('Sync disk changes into project'),
     description`
-      Stage local changes to a project link.
-
-      Outputs diff information and project link.
+      Stage local changes to a project link and print a diff plus the resulting project link.
     `,
     arg('<link>', 'Pear link to stage'),
-    arg('[dir=.]', 'Project directory path'),
-    flag('--dry-run|-d', 'Execute a stage without writing'),
+    arg('[dir=.]', 'Project directory to stage from (defaults to the current directory)'),
+    flag('--dry-run|-d', 'Preview without writing any changes'),
     flag('--ignore <paths>', 'Comma-separated path ignore list'),
     flag('--purge', 'Remove ignored files if present in previous stage'),
-    flag('--only <paths>', 'Filter by paths. Comma-separated'),
+    flag('--only <paths>', 'Only stage these comma-separated paths'),
+    // TODO(dev): "version length" is internal terminology, unexplained anywhere in the help
+    // text. Confirm exact meaning before rewriting further — see the pear --menu help-text
+    // audit for context.
     flag('--truncate <n>', 'Advanced. Truncate to version length n'),
     flag('--json', 'Newline delimited JSON output'),
     commands.stage
@@ -86,16 +93,12 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'provision',
     summary('Block-sync source & production'),
     description`
-      Synchronize blocks to a pre-production target link
-
-      The target can then be multisig'd against a production link
-
-      Use pear touch to generate target link
+      Synchronize blocks from a source link to a pre-production target link, so the target can later be multisig'd against a production link. Use pear touch to generate the target link first.
     `,
     arg('<source-verlink>', 'Versioned source link'),
     arg('<target-link>', 'Target link to sync to'),
     arg('<production-verlink>', 'Versioned link to sync against'),
-    flag('--dry-run|-d', 'Execute provision without writing'),
+    flag('--dry-run|-d', 'Preview without writing any changes'),
     flag('--json', 'Newline delimited JSON output'),
     commands.provision
   )
@@ -125,21 +128,26 @@ module.exports = async (ipc, argv = cmdArgs) => {
         'get',
         summary('Get signing key, initializing if needed'),
         description`
-          Idempotent. 
-          
-          Creates public/private keypair if it doesn't exist.
-          
-          Always prints the public key
+          Idempotent — creates a public/private keypair if one doesn't already exist, then always prints the public key.
         `,
-        arg('[name=default]', 'As used for public/private key filenames'),
-        flag('--secret', 'Also output the private key'),
+        arg(
+          '[name=default]',
+          'Key identifier, used to name the public/private key files on disk (defaults to "default")'
+        ),
+        flag(
+          '--secret',
+          'Also print the private key (sensitive — avoid sharing your terminal output)'
+        ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
       command(
         'paths',
         summary('Print paths to public & private key files'),
-        arg('[name=default]', 'As used for public/private key filenames'),
+        arg(
+          '[name=default]',
+          'Key identifier, used to name the public/private key files on disk (defaults to "default")'
+        ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -158,16 +166,22 @@ module.exports = async (ipc, argv = cmdArgs) => {
         description`
           Import a signing keypair or add a known public key
         `,
-        arg('<name>', 'As used for public/private key filenames'),
-        arg('<public-key>', 'public key path or string'),
-        arg('[private-key]', 'private key path or string'),
+        arg(
+          '<name>',
+          "Name to file this key under (a new identifier — this isn't an existing file)"
+        ),
+        arg('<public-key>', 'Public key — a path to a key file, or the key string itself'),
+        arg(
+          '[private-key]',
+          'Private key — a path to a key file, or the key string itself (optional; omit to add a public key only)'
+        ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
       command(
         'remove',
         summary('Remove signing keys'),
-        arg('<name>', 'As used for public/private key filenames'),
+        arg('<name>', 'Name of the key to remove'),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -177,18 +191,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'link',
       summary('Print project multisig link'),
       description`
-        The publicKeys, quorum & namespace values of the pear.json
-        multisig field determine the multisig link
-
-        Example - 2/3 must sign to approve
-        pear.json: {
-          "multisig": {
-            "publicKeys": ["<pubkey1>", "<pubkey2>", "<pubkey3>"],
-            "namespace": "my-org/my-app",
-            "quorum": 2
-          }
-        }`,
-      flag('--config [./pear.json]', 'Config file path'),
+        The multisig link is derived from the publicKeys, quorum, and namespace fields in your project's pear.json. See pear.json for the full example.
+      `,
+      flag('--config [./pear.json]', "Path to the project's pear.json (defaults to ./pear.json)"),
       flag('--vanity <vanity>', 'Generate a vanity link with this prefix'),
       flag('--json', 'Newline delimited JSON output'),
       commands.multisig
@@ -197,12 +202,11 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'request',
       summary('Create a multisig request'),
       description`
-        Create a signing request to synchronize from a versioned source link
-        onto the project multisig link as output by the pear multisig link command
+        Create a signing request to synchronize a versioned source link onto the project's multisig link (the one printed by pear multisig link).
       `,
       flag('--force', 'Skip sanity checks'),
-      flag('--config [./pear.json]', 'Config file path'),
-      flag('--peer-update-timeout <ms>', 'Peer update timeout in ms'),
+      flag('--config [./pear.json]', "Path to the project's pear.json (defaults to ./pear.json)"),
+      flag('--peer-update-timeout <ms>', 'How long to wait for peers to update, in milliseconds'),
       flag('--json', 'Newline delimited JSON output'),
       arg('<verlink>', 'Versioned source link to sign off'),
       commands.multisig
@@ -211,25 +215,22 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'sign',
       summary('Sign a multisig request'),
       description`
-        Sign a multisig request using a local signing key
-
-        The key's public counterpart must be listed in multisig.publicKeys
-        in the pear.json of the source link supplied to pear multisig request
+        Sign a multisig request using a local signing key. The key's public counterpart must be listed in the multisig.publicKeys field of the pear.json at the source link supplied to pear multisig request.
       `,
       arg('<request>', 'As returned by pear multisig request'),
-      arg('[name=default]', 'Name of local key to sign with'),
+      arg('[name=default]', 'Local key to sign with, by name (defaults to "default")'),
       flag('--json', 'Newline delimited JSON output'),
       commands.multisig
     ),
     command(
       'verify',
       summary('Verify multisig request & responses'),
-      description('Verify inputs & peform commit dry-run'),
+      description('Verify inputs and perform a commit dry run'),
       flag('--force-dangerous', 'Advanced. Careful, this may break the core').hide(),
-      flag('--config [./pear.json]', 'Config file path'),
-      flag('--peer-update-timeout <ms>', 'Peer update timeout in ms'),
+      flag('--config [./pear.json]', "Path to the project's pear.json (defaults to ./pear.json)"),
+      flag('--peer-update-timeout <ms>', 'How long to wait for peers to update, in milliseconds'),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<source-link>', 'Source pear link'),
+      arg('<source-link>', 'Source Pear link'),
       arg('<request>', 'Signing request'),
       rest('[...responses]', 'Signing responses'),
       commands.multisig
@@ -238,11 +239,11 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'commit',
       summary('Commit multisig to go live'),
       description('Apply signatures to allow sync from source drive to multisig drive'),
-      flag('--config [./pear.json]', 'Config file path'),
+      flag('--config [./pear.json]', "Path to the project's pear.json (defaults to ./pear.json)"),
       flag('--force-dangerous', 'Advanced. Careful, this may break the core').hide(),
-      flag('--peer-update-timeout <ms>', 'Peer update timeout in ms'),
+      flag('--peer-update-timeout <ms>', 'How long to wait for peers to update, in milliseconds'),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<source-link>', 'Source pear link'),
+      arg('<source-link>', 'Source Pear link'),
       arg('<request>', 'Signing request'),
       rest('[...responses]', 'Signing responses'),
       commands.multisig
@@ -254,12 +255,10 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'info',
     summary('View project information'),
     description`
-      Supply a link to view application information.
-
-      Supply no argument to view platform information.
+      View information about a project. Supply a link to inspect a specific project, or omit it to view platform information.
     `,
     arg('[link]', 'Project to view info for'),
-    arg('[dir=.]', 'Project directory path'),
+    arg('[dir=.]', 'Project directory path (defaults to the current directory)'),
     flag('--changelog', 'View changelog only').hide(),
     flag('--full-changelog', 'Full record of changes').hide(),
     flag('--changelog-max <n>', 'Maximum changelog entries').hide(),
@@ -273,15 +272,21 @@ module.exports = async (ipc, argv = cmdArgs) => {
 
   const dump = command(
     'dump',
-    summary('Synchronize files from link to dir'),
+    summary('Synchronize files from a link to a directory'),
     arg('<link>', 'Link to dump from. May be file:, pear: or dir'),
     arg('<dir>', 'Directory path to dump to. Use - for output-only'),
-    flag('--dry-run|-d', 'Execute a dump without writing'),
+    flag('--dry-run|-d', 'Preview without writing any changes'),
+    // TODO(dev): "version length" is internal terminology, unexplained anywhere in the help
+    // text. Confirm exact meaning before rewriting further — see the pear --menu help-text
+    // audit for context.
     flag('--checkout <n>', 'Dump from specified checkout, n is version length'),
-    flag('--only <paths>', 'Filter by paths. Implies --no-prune. Comma-seperated'),
+    flag('--only <paths>', 'Only dump these comma-separated paths (implies --no-prune)'),
     flag('--force|-f', 'Force overwrite existing files'),
     flag('--list', 'List paths at link. Sets <dir> to -'),
-    flag('--no-prune', 'Prevent removal of existing paths'),
+    flag(
+      '--no-prune',
+      'Keep existing files at the destination that no longer exist at the source (pruning is on by default)'
+    ),
     flag('--json', 'Newline delimited JSON output'),
     validate((cmd) => {
       if (cmd.flags.list) cmd.args.dir = '-'
@@ -313,13 +318,14 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'changelog',
     summary('View project changelog'),
     description`
-      Supply a link to view application changelog
-
-      Shows Pear changelog by default
+      View a project's changelog. Supply a link to inspect a specific project, or omit it to view Pear's own changelog.
     `,
     arg('[link]', 'Project to view changelog of'),
-    flag('--max|-m <n=10>', 'Maximum entries to show'),
-    flag('--of <semver=^*>', 'SemVer filter - default: latest major'),
+    flag('--max|-m <n=10>', 'Maximum number of entries to show (defaults to 10)'),
+    flag(
+      '--of <semver=^*>',
+      'Only show entries matching this semver range (defaults to the latest major version)'
+    ),
     flag('--full', 'Show entire changelog'),
     flag('--json', 'Newline delimited JSON output'),
     commands.changelog
@@ -331,13 +337,13 @@ module.exports = async (ipc, argv = cmdArgs) => {
     command('inspect', commands.sidecar, summary('Enable running sidecar inspector')),
     summary('Advanced. Run sidecar in terminal'),
     description`
-      The sidecar is a local-running IPC server for corestore access.
-
-      The pear sidecar command shuts down any existing sidecar process
-      and then becomes the sidecar.
+      The sidecar is a local IPC server that brokers corestore access for every running Pear app. Running pear sidecar shuts down any existing sidecar and takes over as the new one, staying attached to this terminal.
     `,
     command('shutdown', commands.sidecar, summary('Shutdown running sidecar')),
-    flag('--log-level <level>', 'Level to log at. 0,1,2,3 (OFF,ERR,INF,TRC)'),
+    flag(
+      '--log-level <level>',
+      'Verbosity to log at — off, error, info, or trace (also accepts 0-3)'
+    ),
     flag('--dht-bootstrap <nodes>').hide(),
     commands.sidecar
   )
@@ -347,8 +353,8 @@ module.exports = async (ipc, argv = cmdArgs) => {
     summary('Advanced. Clear dangling resources'),
     command(
       'cores',
-      summary('Clear corestore cores'),
-      arg('[link]', 'Clear cores by link'),
+      summary('Clear unused corestore cores'),
+      arg('[link]', 'Only clear cores belonging to this link (omit to clear all unused cores)'),
       commands.gc
     ),
     flag('--json', 'Newline delimited JSON output'),
@@ -360,7 +366,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
   const cores = command(
     'cores',
     summary('List platform cores'),
-    description`List platform corestore cores`,
+    description`Every core currently tracked in the platform's corestore, whether or not it's in active use.`,
     flag('--all-cores', 'List all cores, including empty cores'),
     flag('--json', 'Newline delimited JSON output'),
     commands.cores
@@ -374,10 +380,15 @@ module.exports = async (ipc, argv = cmdArgs) => {
     commands.versions
   )
 
-  const help = command('help', arg('[command]'), summary('View help for command'), (h) => {
-    if (h.args.command) console.log(cmd.help(h.args.command))
-    else console.log(cmd.overview({ full: true }))
-  })
+  const help = command(
+    'help',
+    arg('[command]', 'Command to show help for (omit to show the full overview)'),
+    summary('View help for command'),
+    (h) => {
+      if (h.args.command) console.log(cmd.help(h.args.command))
+      else console.log(cmd.overview({ full: true }))
+    }
+  )
 
   const cmd = command(
     'pear',

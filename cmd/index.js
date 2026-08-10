@@ -37,7 +37,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
     summary('Generate a project link'),
     description`Create a new randomly generated Pear link`,
     flag('--json', 'Newline delimited JSON output'),
-    flag('--vanity <vanity>', 'Generate a vanity link with this prefix'),
+    flag('--vanity <vanity>', 'Generate a vanity link with this prefix').hint(
+      'Found by generating keys until one starts with what you asked for. More than 4 characters can take a very long time.'
+    ),
     commands.touch
   )
 
@@ -92,9 +94,13 @@ module.exports = async (ipc, argv = cmdArgs) => {
 
       Use pear touch to generate target link
     `,
-    arg('<source-verlink>', 'Versioned source link'),
+    arg('<source-verlink>', 'Versioned source link').hint(
+      'A verlink pins an exact version — pear://<fork>.<length>.<key> — unlike a bare link, which always resolves to the latest content.'
+    ),
     arg('<target-link>', 'Target link to sync to'),
-    arg('<production-verlink>', 'Versioned link to sync against'),
+    arg('<production-verlink>', 'Versioned link to sync against').hint(
+      'A verlink pins an exact version — pear://<fork>.<length>.<key> — unlike a bare link, which always resolves to the latest content.'
+    ),
     flag('--dry-run|-d', 'Execute provision without writing'),
     flag('--json', 'Newline delimited JSON output'),
     commands.provision
@@ -132,7 +138,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
           Always prints the public key
         `,
         arg('[name=default]', 'As used for public/private key filenames'),
-        flag('--secret', 'Also output the private key'),
+        flag('--secret', 'Also output the private key').hint(
+          'Prints the private key in plain text. Make sure nobody can see your screen or a terminal recording before using this.'
+        ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -160,7 +168,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
         `,
         arg('<name>', 'As used for public/private key filenames'),
         arg('<public-key>', 'public key path or string'),
-        arg('[private-key]', 'private key path or string'),
+        arg('[private-key]', 'private key path or string').hint(
+          'Pasting the raw key string here instead of a file path may leave it visible in your shell history — prefer a file path where you can.'
+        ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -189,7 +199,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
           }
         }`,
       flag('--config [./pear.json]', 'Config file path'),
-      flag('--vanity <vanity>', 'Generate a vanity link with this prefix'),
+      flag('--vanity <vanity>', 'Generate a vanity link with this prefix').hint(
+        'Found by generating keys until one starts with what you asked for. More than 4 characters can take a very long time.'
+      ),
       flag('--json', 'Newline delimited JSON output'),
       commands.multisig
     ),
@@ -204,7 +216,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
       flag('--config [./pear.json]', 'Config file path'),
       flag('--peer-update-timeout <ms>', 'Peer update timeout in ms'),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<verlink>', 'Versioned source link to sign off'),
+      arg('<verlink>', 'Versioned source link to sign off').hint(
+        'A verlink pins an exact version — pear://<fork>.<length>.<key> — unlike a bare link, which always resolves to the latest content.'
+      ),
       commands.multisig
     ),
     command(
@@ -231,7 +245,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
       flag('--json', 'Newline delimited JSON output'),
       arg('<source-link>', 'Source pear link'),
       arg('<request>', 'Signing request'),
-      rest('[...responses]', 'Signing responses'),
+      rest('[...responses]', 'Signing responses').hint(
+        'One response per signer who has run pear multisig sign — collect them all before verifying.'
+      ),
       commands.multisig
     ),
     command(
@@ -244,7 +260,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
       flag('--json', 'Newline delimited JSON output'),
       arg('<source-link>', 'Source pear link'),
       arg('<request>', 'Signing request'),
-      rest('[...responses]', 'Signing responses'),
+      rest('[...responses]', 'Signing responses').hint(
+        'One response per signer who has run pear multisig sign — collect them all before committing.'
+      ),
       commands.multisig
     ),
     (cmd) => console.log(cmd.command.help())
@@ -301,7 +319,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
   const data = command(
     'data',
     summary('Explore platform database'),
-    command('dht', summary('DHT known-nodes cache'), commands.data),
+    command('dht', summary('DHT known-nodes cache'), commands.data).hint(
+      'DHT = Distributed Hash Table, the peer-discovery network Pear nodes use to find each other. Lists nodes this platform has already discovered.'
+    ),
     command('multisig', summary('Multisig records'), commands.data),
     flag('--json', 'Newline delimited JSON output'),
     (cmd) => {
@@ -328,7 +348,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
   const sidecar = command(
     'sidecar',
     command('shutdown', commands.sidecar, summary('Shutdown running sidecar')),
-    command('inspect', commands.sidecar, summary('Enable running sidecar inspector')),
+    command('inspect', commands.sidecar, summary('Enable running sidecar inspector')).hint(
+      'Opens the sidecar for remote debugging via Chrome DevTools. The inspector key it prints must be kept secret.'
+    ),
     summary('Advanced. Run sidecar in terminal'),
     description`
       The sidecar is a local-running IPC server for corestore access.
@@ -337,7 +359,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
       and then becomes the sidecar.
     `,
     command('shutdown', commands.sidecar, summary('Shutdown running sidecar')),
-    flag('--log-level <level>', 'Level to log at. 0,1,2,3 (OFF,ERR,INF,TRC)'),
+    flag('--log-level <level>', 'Level to log at. 0,1,2,3 (OFF,ERR,INF,TRC)').hint(
+      'Case-insensitive. Accepts the full word (info), the 3-letter form (INF), or the number (2). trace is most verbose, off disables logging.'
+    ),
     flag('--dht-bootstrap <nodes>').hide(),
     commands.sidecar
   )
@@ -350,6 +374,8 @@ module.exports = async (ipc, argv = cmdArgs) => {
       summary('Clear corestore cores'),
       arg('[link]', 'Clear cores by link'),
       commands.gc
+    ).hint(
+      "A core is a single append-only log inside Pear's local corestore. This clears ones no longer referenced by any project, freeing disk space."
     ),
     flag('--json', 'Newline delimited JSON output'),
     () => {
@@ -361,7 +387,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'cores',
     summary('List platform cores'),
     description`List platform corestore cores`,
-    flag('--all-cores', 'List all cores, including empty cores'),
+    flag('--all-cores', 'List all cores, including empty cores').hint(
+      'An empty core has been allocated but never written to — usually leftover from an interrupted operation.'
+    ),
     flag('--json', 'Newline delimited JSON output'),
     commands.cores
   )

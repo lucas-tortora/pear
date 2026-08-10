@@ -1,11 +1,12 @@
 'use strict'
 const paparam = require('paparam')
 const { header, footer, command, flag, arg, summary, description, bail, rest, validate } = paparam
-const { usage, print } = require('../lib/terminal.js')
+const { usage, print, isTTY } = require('../lib/terminal.js')
 const { cmdArgs } = require('../argv')
 const errors = require('pear-errors')
 const { definition } = require('../lib/cmd')
 const { UPGRADE, PEAR_DEV_ROOT } = require('../constants.js')
+const { runMenu } = require('bare-tui-paparam')
 
 const commands = {
   touch: require('./touch'),
@@ -66,9 +67,11 @@ module.exports = async (ipc, argv = cmdArgs) => {
     commands.seed
   )
 
-  const build = command('build', require('pear-build/package.json').command, (cmd) => {
-    if (!cmd.flags.package) return console.log(build.help())
-    return commands.build(cmd.flags).done()
+  const build = command('build', require('pear-build/package.json').command, async (cmd) => {
+    const builder = commands.build(cmd.flags)
+    // suppress error event as .done also rejects on error
+    builder.on('error', () => {})
+    await builder.done()
   })
 
   const stage = command(
@@ -362,7 +365,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
     command(
       'cores',
       summary('Clear corestore cores'),
-      arg('[link]', 'Only clear cores belonging to this link'),
+      arg('<link>', 'Clear the cores belonging to this link'),
       commands.gc
     ),
     flag('--json', 'Newline delimited JSON output'),
@@ -451,13 +454,32 @@ module.exports = async (ipc, argv = cmdArgs) => {
         ['ERR_LEGACY', messageOnly],
         ['ERR_INVALID_TEMPLATE', messageOnly],
         ['ERR_DIR_NONEMPTY', messageOnly],
+        ['ERR_NOT_FOUND', messageOnly],
         ['ERR_OPERATION_FAILED', opFail]
       ])
       const nouse = [messageOnly, opFail]
-      const code = codemap.has(bail.err?.code) ? bail.err.code : bail.reason
+      const subcode = bail.err?.code === 'ERR_OPERATION_FAILED' ? bail.err?.info?.code : null
+      const code = codemap.has(subcode ?? bail.err?.code) ? (subcode ?? bail.err.code) : bail.reason
       const ref = codemap.get(code)
-      const reason = codemap.has(code) ? (codemap.get(code)(bail) ?? bail.reason) : bail.reason
+      let reason = bail.reason
+      if (codemap.has(code)) {
+        reason = subcode ? bail.err?.info?.message : (codemap.get(code)(bail) ?? bail.reason)
+      }
       Bare.exitCode = 1
+
+      if (argv.includes('--json')) {
+        console.log(
+          JSON.stringify({
+            cmd: argv[0],
+            tag: 'error',
+            data: {
+              success: false,
+              message: reason
+            }
+          })
+        )
+        return
+      }
 
       print(reason, false)
 
@@ -504,18 +526,39 @@ module.exports = async (ipc, argv = cmdArgs) => {
 
   const shell = require('../lib/cmd').command(argv)
   const cmdIx = shell?.indices.args.cmd ?? -1
-  if (cmdIx > -1) argv = argv.slice(cmdIx)
 
-  if (argv[0] === 'run') {
-    const message =
-      'pear run has been removed.\nUse the pear-runtime module instead: https://www.npmjs.com/package/pear-runtime'
-    print(message, false)
-    Bare.exitCode = 1
-    ipc.close()
-    return null
+  let program = null
+
+  if (shell?.flags?.menu) {
+    if (!isTTY) {
+      print('pear --menu requires an interactive terminal', false)
+      Bare.exitCode = 1
+      ipc.close()
+      return null
+    }
+    const confirmed = await runMenu(cmd, {
+      onComplete: (result, { argv: menuArgv }) => {
+        program = cmd.parse(menuArgv)
+      }
+    })
+    if (!confirmed || !confirmed.run) {
+      ipc.close()
+      return null
+    }
+  } else {
+    if (cmdIx > -1) argv = argv.slice(cmdIx)
+
+    if (argv[0] === 'run') {
+      const message =
+        'pear run has been removed.\nUse the pear-runtime module instead: https://www.npmjs.com/package/pear-runtime'
+      print(message, false)
+      Bare.exitCode = 1
+      ipc.close()
+      return null
+    }
+
+    program = cmd.parse(argv)
   }
-
-  const program = cmd.parse(argv)
 
   if (program === null) {
     ipc.close()

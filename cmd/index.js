@@ -42,7 +42,10 @@ module.exports = async (ipc, argv = cmdArgs) => {
     summary('Generate a project link'),
     description`Create a new randomly generated Pear link`,
     flag('--json', 'Newline delimited JSON output'),
-    flag('--vanity <vanity>', 'Generate a link starting with this z32 prefix (over 4 is slow)'),
+    flag(
+      '--vanity <vanity>',
+      'Generate a link starting with this z32 prefix (over 4 chars may be slow)'
+    ),
     commands.touch
   )
 
@@ -57,7 +60,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
     flag('--no-tty', 'Print plain log lines instead of the live terminal UI (on by default)'),
     flag(
       '--until-sync <key>',
-      "Exit once this peer's key has fully synced (repeat to wait on more peers)"
+      "Exit once this peer's key has fully synced. Pass multiple flags to wait for more peers"
     ).multiple(),
     flag(
       '--stats-interval <ms>',
@@ -83,7 +86,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
     `,
     arg('<link>', 'Pear link to stage'),
     arg('[dir=.]', 'Project directory to stage from (defaults to the current directory)'),
-    flag('--dry-run|-d', 'Preview without writing any changes'),
+    flag('--dry-run|-d', 'Execute a stage without writing'),
     flag('--ignore <paths>', "Don't stage these comma-separated paths"),
     flag('--purge', 'Also delete already-staged files that now match the ignore list'),
     flag('--only <paths>', 'Only stage these comma-separated paths'),
@@ -175,15 +178,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
         description`
           Import a signing keypair or add a known public key
         `,
-        arg(
-          '<name>',
-          "Name to file this key under (a new identifier — this isn't an existing file)"
-        ),
-        arg('<public-key>', 'Public key — a key file path or key string'),
-        arg(
-          '[private-key]',
-          'Private key — a key file path or key string. Omit for public-key only'
-        ),
+        arg('<name>', 'Name to store this key under (a new name, not an existing one)'),
+        arg('<public-key>', 'Public key — a key path or key string'),
+        arg('[private-key]', 'Private key — a key path or key string. Omit for public-key only'),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -205,7 +202,10 @@ module.exports = async (ipc, argv = cmdArgs) => {
         Run pear help multisig for an example config.
       `,
       flag('--config [./pear.json]', "Path to the project's pear.json (defaults to ./pear.json)"),
-      flag('--vanity <vanity>', 'Generate a link starting with this z32 prefix (over 4 is slow)'),
+      flag(
+        '--vanity <vanity>',
+        'Generate a link starting with this z32 prefix (over 4 chars may be slow)'
+      ),
       flag('--json', 'Newline delimited JSON output'),
       commands.multisig
     ),
@@ -273,14 +273,14 @@ module.exports = async (ipc, argv = cmdArgs) => {
       Supply a link to inspect a specific project, or omit it to view platform information.
     `,
     arg('[link]', 'Project to view info for'),
-    arg('[dir=.]', 'Project directory path (defaults to the current directory)'),
+    arg('[dir=.]', 'Project directory path'),
     flag('--changelog', 'View changelog only').hide(),
     flag('--full-changelog', 'Full record of changes').hide(),
     flag('--changelog-max <n>', 'Maximum changelog entries').hide(),
     flag('--metadata', 'Print only the project metadata'),
     flag('--manifest', 'Print only the app manifest'),
     flag('--multisig', 'Print only the multisig quorum and signing keys'),
-    flag('--key', 'Print only the link, for piping into other commands'),
+    flag('--key', 'Print the view key only'),
     flag('--json', 'Newline delimited JSON output'),
     commands.info
   )
@@ -288,11 +288,11 @@ module.exports = async (ipc, argv = cmdArgs) => {
   const dump = command(
     'dump',
     summary('Synchronize files from a link to a directory'),
-    arg('<link>', 'A pear:// link, a file: URL, or a local directory path'),
+    arg('<link>', 'A pear:// link, a file: URL, or a local directory path to dump from'),
     arg('<dir>', 'Directory path to dump to. Use - to print to stdout instead'),
     flag('--dry-run|-d', 'Preview without writing any changes'),
     flag('--checkout <n>', 'Dump the project as it was at this version length'),
-    flag('--only <paths>', 'Only dump these comma-separated paths (implies --no-prune)'),
+    flag('--only <paths>', 'Only dump these comma-separated paths'),
     flag('--force|-f', 'Force overwrite existing files'),
     flag('--list', 'List the paths inside the link instead of writing any files'),
     flag('--no-prune', 'Keep destination files missing from the source (pruning is on by default)'),

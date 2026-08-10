@@ -50,12 +50,18 @@ module.exports = async (ipc, argv = cmdArgs) => {
       Specify a link to seed a project.
     `,
     arg('<link>', 'Pear link to seed'),
-    flag('--no-tty', 'Disable tty features'),
+    flag('--no-tty', 'Disable tty features').hint(
+      'In the interactive form this appears as an unchecked "tty" box; checking it passes --no-tty and turns off the live UI.'
+    ),
     flag(
       '--until-sync <key>',
       'Exit when specified peer fully sync. Pass multiple flags to wait for more peers'
-    ).multiple(),
-    flag('--stats-interval <ms>', 'Stats refresh interval in milliseconds'),
+    )
+      .multiple()
+      .hint("A peer's public key (z32) — shown live in the Peers panel as peers connect or sync."),
+    flag('--stats-interval <ms>', 'Stats refresh interval in milliseconds').hint(
+      'Defaults to 500ms with the live UI on, or 3000ms under --no-tty.'
+    ),
     flag('--json', 'Newline delimited JSON output'),
     commands.seed
   )

@@ -27,6 +27,11 @@ const commands = {
   versions: require('./versions')
 }
 
+// Note: continuation lines in multi-line description`` blocks end with a trailing space
+// on purpose. paparam keeps the newlines for --help, but bare-tui-paparam's catalogOf runs
+// every description through cleanText, which strips control characters — newlines included —
+// with no replacement. Without the trailing space the sentences run together in the --menu
+// form ("...project link.Outputs diff...").
 module.exports = async (ipc, argv = cmdArgs) => {
   await ipc.ready()
 
@@ -49,7 +54,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'seed',
     summary('Seed or reseed a project'),
     description`
-      Announce a project link on the network and serve its blocks to peers.
+      Announce a project link on the network and serve its blocks to peers. 
 
       Runs until you exit, or until every --until-sync peer has fully synced.
     `,
@@ -85,7 +90,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'stage',
     summary('Sync disk changes into project'),
     description`
-      Stage local changes to a project link.
+      Stage local changes to a project link. 
 
       Outputs diff information and the resulting project link.
     `,
@@ -119,9 +124,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'provision',
     summary('Block-sync source & production'),
     description`
-      Synchronize blocks from a source link to a pre-production target link.
+      Synchronize blocks from a source link to a pre-production target link. 
 
-      The target can then be multisig'd against a production link.
+      The target can then be multisig'd against a production link. 
 
       Use pear touch to generate the target link first.
     `,
@@ -143,18 +148,18 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'multisig',
     summary('Production signing coordination'),
     description`
-      Quorum-based cryptographic cosigning for production releases.
+      Quorum-based cryptographic cosigning for production releases. 
 
-      Gather enough signatures to approve a release to synchronize
-      onto a production link.
+      Gather enough signatures to approve a release to synchronize 
+      onto a production link. 
 
-      Example - 2/3 must sign to approve
-      pear.json: {
-        "multisig": {
-          "publicKeys": ["<pubkey1>", "<pubkey2>", "<pubkey3>"],
-          "namespace": "my-org/my-app",
-          "quorum": 2
-        }
+      Example - 2/3 must sign to approve 
+      pear.json: { 
+        "multisig": { 
+          "publicKeys": ["<pubkey1>", "<pubkey2>", "<pubkey3>"], 
+          "namespace": "my-org/my-app", 
+          "quorum": 2 
+        } 
       }
     `,
     command(
@@ -164,9 +169,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
         'get',
         summary('Get signing key, initializing if needed'),
         description`
-          Idempotent.
+          Idempotent. 
 
-          Creates a public/private keypair if one doesn't already exist.
+          Creates a public/private keypair if one doesn't already exist. 
 
           Always prints the public key.
         `,
@@ -174,9 +179,8 @@ module.exports = async (ipc, argv = cmdArgs) => {
           '[name=default]',
           'Key identifier for the keypair\'s on-disk names. Defaults to "default"'
         ).hint('Must match ^[\\w-]+$ — letters, numbers, hyphens, underscores only.'),
-        flag(
-          '--secret',
-          'Also print the private key in plain text — make sure nobody can see your screen'
+        flag('--secret', 'Also print the private key').hint(
+          'Prints the private key in plain text. Make sure nobody can see your screen or a terminal recording before using this.'
         ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
@@ -208,13 +212,17 @@ module.exports = async (ipc, argv = cmdArgs) => {
         description`
           Import a signing keypair or add a known public key
         `,
-        arg('<name>', 'Name to store this key under. Must not already exist'),
+        arg('<name>', 'Name to store this key under. Must not already exist').hint(
+          'Fails if a key already exists under this name.'
+        ),
         arg('<public-key>', 'Public key — a key path or key string').hint(
           "Must be z32-encoded (the same format pear multisig keys get prints), whether given as a literal string or a file's contents."
         ),
         arg(
           '[private-key]',
-          'Private key — a key path or key string. A path avoids leaving it in shell history. Omit for public-key only'
+          'Private key — a key path or key string. Omit for public-key only'
+        ).hint(
+          'Pasting the raw key string here instead of a file path may leave it visible in your shell history — prefer a file path where you can.'
         ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
@@ -222,8 +230,8 @@ module.exports = async (ipc, argv = cmdArgs) => {
       command(
         'remove',
         summary('Remove signing keys'),
-        arg('<name>', 'Name of the key to remove. Permanent — no confirmation, no backup').hint(
-          'Deletes both the public key file and, if present, the private key file.'
+        arg('<name>', 'Name of the key to remove').hint(
+          'Permanently deletes both the public key file and (if present) the private key file — no confirmation prompt, no backup.'
         ),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
@@ -234,8 +242,8 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'link',
       summary('Print project multisig link'),
       description`
-        The multisig link is derived from the publicKeys, quorum and
-        namespace fields of your project's pear.json.
+        The multisig link is derived from the publicKeys, quorum and 
+        namespace fields of your project's pear.json. 
 
         Run pear help multisig for an example config.
       `,
@@ -253,7 +261,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'request',
       summary('Create a multisig request'),
       description`
-        Create a signing request to synchronize a versioned source link
+        Create a signing request to synchronize a versioned source link 
         onto the project's multisig link, as printed by pear multisig link.
       `,
       flag('--force', 'Skip sanity checks').hint(
@@ -279,10 +287,10 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'sign',
       summary('Sign a multisig request'),
       description`
-        Sign a multisig request using a local signing key.
+        Sign a multisig request using a local signing key. 
 
-        The key's public counterpart must be listed in the
-        multisig.publicKeys field of the pear.json at the source link
+        The key's public counterpart must be listed in the 
+        multisig.publicKeys field of the pear.json at the source link 
         supplied to pear multisig request.
       `,
       arg('<request>', 'As returned by pear multisig request').hint(
@@ -310,7 +318,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
         'Defaults to 5000 milliseconds. verify always runs as a dry-run, so it never reaches the separate unbounded post-commit seeding wait.'
       ),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<source-link>', 'Source pear link').hint(
+      arg('<source-link>', 'Source Pear link').hint(
         'The original (non-multisig) versioned link, not the multisig link.'
       ),
       arg('<request>', 'Signing request, as printed by pear multisig request'),
@@ -335,7 +343,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
         'Defaults to 5000 milliseconds, and bounds only the checks that run before the commit. The wait for remote seeders afterwards takes no timeout at all and can block indefinitely — on any commit, not just the first. Ctrl-C is the only way out.'
       ),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<source-link>', 'Source pear link').hint(
+      arg('<source-link>', 'Source Pear link').hint(
         'The original (non-multisig) versioned link, not the multisig link.'
       ),
       arg('<request>', 'Signing request, as printed by pear multisig request'),
@@ -351,9 +359,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'info',
     summary('View project information'),
     description`
-      View information about a project.
+      View information about a project. 
 
-      Supply a link to inspect a specific project, or omit it to view
+      Supply a link to inspect a specific project, or omit it to view 
       platform information.
     `,
     arg('[link]', 'Project to view info for').hint(
@@ -443,9 +451,9 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'changelog',
     summary('View project changelog'),
     description`
-      View a project's changelog.
+      View a project's changelog. 
 
-      Supply a link to inspect a specific project, or omit it to view
+      Supply a link to inspect a specific project, or omit it to view 
       Pear's own changelog.
     `,
     arg('[link]', 'Project to view changelog of').hint(
@@ -475,14 +483,14 @@ module.exports = async (ipc, argv = cmdArgs) => {
     ),
     summary('Advanced. Run sidecar in terminal'),
     description`
-      The sidecar is a local IPC server that brokers corestore access
-      for every running Pear app.
+      The sidecar is a local IPC server that brokers corestore access 
+      for every running Pear app. 
 
-      Running pear sidecar shuts down any existing sidecar and takes
+      Running pear sidecar shuts down any existing sidecar and takes 
       over as the new one, staying attached to this terminal.
     `,
     flag('--log-level <level>', 'Verbosity to log at — 0=off, 1=error, 2=info, or 3=trace').hint(
-      'Case-insensitive. Also accepts the 3-letter form, e.g. INF.'
+      'Case-insensitive. Accepts the full word (info), the 3-letter form (INF), or the number (2). trace is most verbose, off disables logging.'
     ),
     flag('--dht-bootstrap <nodes>').hide(),
     commands.sidecar
@@ -512,7 +520,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'cores',
     summary('List platform cores'),
     description`
-      Lists the cores in the platform corestore.
+      Lists the cores in the platform corestore. 
       Empty cores are omitted unless --all-cores is set.
     `,
     flag('--all-cores', 'List all cores, including empty cores').hint(

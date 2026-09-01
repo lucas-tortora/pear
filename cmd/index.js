@@ -28,11 +28,6 @@ const commands = {
   versions: require('./versions')
 }
 
-// Note: continuation lines in multi-line description`` blocks end with a trailing space
-// on purpose. paparam keeps the newlines for --help, but bare-tui-paparam's catalogOf runs
-// every description through cleanText, which strips control characters — newlines included —
-// with no replacement. Without the trailing space the sentences run together in the --menu
-// form ("...project link.Outputs diff...").
 module.exports = async (ipc, argv = cmdArgs) => {
   await ipc.ready()
 
@@ -78,7 +73,6 @@ module.exports = async (ipc, argv = cmdArgs) => {
 
   const build = command('build', require('pear-build/package.json').command, async (cmd) => {
     const builder = commands.build(cmd.flags)
-    // suppress error event as .done also rejects on error
     builder.on('error', () => {})
     await builder.done()
   })
@@ -364,7 +358,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
       if (cmd.flags.list) cmd.args.dir = '-'
       return true
     }),
-    validate('<dir> is required', (cmd) => !!cmd.args.dir), // TODO fix in paparam
+    validate('<dir> is required', (cmd) => !!cmd.args.dir),
     commands.dump
   )
 

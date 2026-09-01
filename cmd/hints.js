@@ -1,15 +1,5 @@
 'use strict'
 
-// Long-form CLI help text, kept out of cmd/index.js and lib/cmd.js so those
-// files' paparam declarations stay short. Each entry is applied via paparam's
-// own .hint() on the matching flag()/arg()/rest()/command() call — see
-// cmd/index.js and lib/cmd.js.
-//
-// Shape: { since?, until?, text } per entry, keyed by command path (nested
-// for subcommands). A command's own .hint() — not one of its flags/args —
-// lives under a `$` key. since/until are real fields here, not a sentence
-// to parse out of the hint text itself.
-
 const VANITY_TEXT =
   'Found by generating keys until one starts with what you asked for. More than 4 characters can take a very long time.'
 

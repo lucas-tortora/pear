@@ -78,6 +78,9 @@ module.exports = {
     sourceVerlink: {
       text: 'Must carry a version — pear://<fork>.<length>.<key>. A bare link is rejected, because it always resolves to the latest content instead of pinning one.'
     },
+    targetLink: {
+      text: 'Unlike source-verlink and production-verlink, this is a bare link with no version — pear touch generates one this way, since a fresh target has no history yet to pin a version to.'
+    },
     productionVerlink: {
       text: 'Must carry a version — pear://<fork>.<length>.<key>. A bare link is rejected, because it always resolves to the latest content instead of pinning one.'
     },
@@ -142,6 +145,9 @@ module.exports = {
         text: 'Defaults to 5000 milliseconds. verify always runs as a dry-run, so it never reaches the separate unbounded post-commit seeding wait.'
       },
       sourceLink: { text: SOURCE_LINK_TEXT },
+      request: {
+        text: "Must be the z32-encoded request string, unmodified — it's decoded and structurally validated before verifying, so a truncated or edited request is rejected immediately."
+      },
       responses: {
         text: 'One response per signer who has run pear multisig sign — collect them all before verifying.'
       }
@@ -152,6 +158,9 @@ module.exports = {
         text: 'Defaults to 5000 milliseconds, and bounds only the checks that run before the commit. The wait for remote seeders afterwards takes no timeout at all and can block indefinitely — on any commit, not just the first. Ctrl-C is the only way out.'
       },
       sourceLink: { text: SOURCE_LINK_TEXT },
+      request: {
+        text: "Must be the z32-encoded request string, unmodified — it's decoded and structurally validated before committing, so a truncated or edited request is rejected immediately."
+      },
       responses: {
         text: 'One response per signer who has run pear multisig sign — collect them all before committing.'
       }
@@ -244,6 +253,10 @@ module.exports = {
       linkOrName: {
         since: '3.3.0',
         text: "Clears this link's core, then its content core if the first one cleared. A core you can write to, or one the local corestore has never seen, is skipped rather than treated as an error — the output says which."
+      },
+      force: {
+        since: '3.3.0',
+        text: 'Skips the typed CLEAR confirmation prompt that otherwise appears once, up front, if any resolved core is writable. There is no non-interactive escape from that prompt — a piped or redirected stdin sends it into an infinite loop instead of an error — so this flag is mandatory for unattended use.'
       }
     }
   },
@@ -265,6 +278,12 @@ module.exports = {
   versions: {
     modules: {
       text: "Lists every package in Pear's own bundled dependencies (bare-*, hypercore-*, corestore, etc.) — not the dependencies of your own project."
+    }
+  },
+
+  help: {
+    command: {
+      text: 'Only a single top-level command name, e.g. multisig — not a subcommand path. For a subcommand, run its own --help directly (pear multisig keys get --help) or pear help multisig for the subcommand list.'
     }
   }
 }

@@ -7,6 +7,7 @@ const errors = require('pear-errors')
 const { definition } = require('../lib/cmd')
 const { UPGRADE, PEAR_DEV_ROOT } = require('../constants.js')
 const { runMenu } = require('bare-tui-paparam')
+const H = require('./hints.js')
 
 const commands = {
   touch: require('./touch'),
@@ -40,7 +41,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
     description`Create a new randomly generated Pear link`,
     flag('--json', 'Newline delimited JSON output'),
     flag('--vanity <vanity>', 'Generate a link starting with this z32 prefix').hint(
-      'Found by generating keys until one starts with what you asked for. More than 4 characters can take a very long time.'
+      H.touch.vanity.text
     ),
     commands.touch
   )
@@ -49,26 +50,22 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'seed',
     summary('Seed or reseed a project'),
     description`
-      Announce a project link on the network and serve its blocks to peers.
+      Announce a project link on the network and serve its blocks to peers. 
 
       Runs until you exit, or until every --until-sync peer has fully synced.
     `,
-    arg('<link>', 'Pear link to seed').hint(
-      'Accepts a versioned verlink too, but only the key is used — seed always replicates the full/latest history, never pinned to that version.'
-    ),
+    arg('<link>', 'Pear link to seed').hint(H.seed.link.text),
     flag('--no-tty', 'Print plain log lines instead of the live terminal UI').hint(
-      'In the interactive form this appears as an unchecked "tty" box; checking it passes --no-tty and turns off the live UI.'
+      H.seed.noTty.text
     ),
     flag(
       '--until-sync <key>',
       'Exit once this peer has synced. Pass multiple flags to wait for more peers'
     )
       .multiple()
-      .hint(
-        "A peer's public key (z32). The live view lists Seeding, Drive Key, Drive Length, Discovery Key, Content Key, Firewalled, NAT Type, Whoami and Network, then an unlabelled log below — the key to use here is the one printed after each peer join or peer sync line."
-      ),
+      .hint(H.seed.untilSync.text),
     flag('--stats-interval <milliseconds>', 'Stats refresh interval in milliseconds').hint(
-      'Defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under --no-tty.'
+      H.seed.statsInterval.text
     ),
     flag('--json', 'Newline delimited JSON output'),
     commands.seed
@@ -76,7 +73,6 @@ module.exports = async (ipc, argv = cmdArgs) => {
 
   const build = command('build', require('pear-build/package.json').command, async (cmd) => {
     const builder = commands.build(cmd.flags)
-    // suppress error event as .done also rejects on error
     builder.on('error', () => {})
     await builder.done()
   })
@@ -85,32 +81,22 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'stage',
     summary('Sync disk changes into project'),
     description`
-      Stage local changes to a project link.
+      Stage local changes to a project link. 
 
       Outputs diff information and the resulting project link.
     `,
-    arg('<link>', 'Pear link to stage').hint(
-      'If you pass a versioned verlink, only its key is used — staging always targets the current head, ignoring the version segment.'
-    ),
-    arg('[dir=.]', 'Project directory to stage from').hint(
-      'Defaults to the directory you run the command from. If it has no package.json, Pear searches upward through parent directories for one.'
-    ),
-    flag('--dry-run|-d', 'Execute a stage without writing').hint(
-      'Does not guard --truncate: if --truncate is also given, the drive is truncated for real before any dry-run check runs.'
-    ),
-    flag('--ignore <paths>', "Don't stage these comma-separated paths").hint(
-      "Supports glob patterns (*, **) and a leading ! to un-ignore. Adds to — doesn't replace — any ignore list already set in pear.json."
-    ),
+    arg('<link>', 'Pear link to stage').hint(H.stage.link.text),
+    arg('[dir=.]', 'Project directory to stage from').hint(H.stage.dir.text),
+    flag('--dry-run|-d', 'Execute a stage without writing').hint(H.stage.dryRun.text),
+    flag('--ignore <paths>', "Don't stage these comma-separated paths").hint(H.stage.ignore.text),
     flag('--purge', 'Also delete already-staged files that now match the ignore list').hint(
-      "Also switches on automatically if the project's pear.json sets stage.purge."
+      H.stage.purge.text
     ),
-    flag('--only <paths>', 'Only stage these comma-separated paths').hint(
-      "Matches by exact path/directory prefix, not glob patterns like --ignore. Adds to — doesn't replace — any stage.only list in pear.json."
-    ),
+    flag('--only <paths>', 'Only stage these comma-separated paths').hint(H.stage.only.text),
     flag(
       '--truncate <n>',
       'Advanced. Truncate the project to this version length. Destructive — later versions are dropped'
-    ).hint('n is the length segment of a verlink (pear://<fork>.<length>.<key>).'),
+    ).hint(H.stage.truncate.text),
     flag('--json', 'Newline delimited JSON output'),
     commands.stage
   )
@@ -119,22 +105,20 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'provision',
     summary('Block-sync source & production'),
     description`
-      Synchronize blocks from a source link to a pre-production target link.
+      Synchronize blocks from a source link to a pre-production target link. 
 
-      The target can then be multisig'd against a production link.
+      The target can then be multisig'd against a production link. 
 
       Use pear touch to generate the target link first.
     `,
-    arg('<source-verlink>', 'Versioned source link').hint(
-      'Must carry a version — pear://<fork>.<length>.<key>. A bare link is rejected, because it always resolves to the latest content instead of pinning one.'
+    arg('<source-verlink>', 'Versioned source link').hint(H.provision.sourceVerlink.text),
+    arg('<target-link>', 'Target link to sync to, as generated by pear touch').hint(
+      H.provision.targetLink.text
     ),
-    arg('<target-link>', 'Target link to sync to, as generated by pear touch'),
     arg('<production-verlink>', 'Versioned production link to sync against').hint(
-      'Must carry a version — pear://<fork>.<length>.<key>. A bare link is rejected, because it always resolves to the latest content instead of pinning one.'
+      H.provision.productionVerlink.text
     ),
-    flag('--dry-run|-d', 'Execute provision to a disposable target').hint(
-      'Downloads and diffs against a temporary local drive instead of the real target — nothing reaches the target link itself, and no swarm announce happens for it. The temporary drive is deleted afterward.'
-    ),
+    flag('--dry-run|-d', 'Execute provision to a disposable target').hint(H.provision.dryRun.text),
     flag('--json', 'Newline delimited JSON output'),
     commands.provision
   )
@@ -143,18 +127,18 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'multisig',
     summary('Production signing coordination'),
     description`
-      Quorum-based cryptographic cosigning for production releases.
+      Quorum-based cryptographic cosigning for production releases. 
 
-      Gather enough signatures to approve a release to synchronize
-      onto a production link.
+      Gather enough signatures to approve a release to synchronize 
+      onto a production link. 
 
-      Example - 2/3 must sign to approve
-      pear.json: {
-        "multisig": {
-          "publicKeys": ["<pubkey1>", "<pubkey2>", "<pubkey3>"],
-          "namespace": "my-org/my-app",
-          "quorum": 2
-        }
+      Example - 2/3 must sign to approve 
+      pear.json: { 
+        "multisig": { 
+          "publicKeys": ["<pubkey1>", "<pubkey2>", "<pubkey3>"], 
+          "namespace": "my-org/my-app", 
+          "quorum": 2 
+        } 
       }
     `,
     command(
@@ -164,20 +148,17 @@ module.exports = async (ipc, argv = cmdArgs) => {
         'get',
         summary('Get signing key, initializing if needed'),
         description`
-          Idempotent.
+          Idempotent. 
 
-          Creates a public/private keypair if one doesn't already exist.
+          Creates a public/private keypair if one doesn't already exist. 
 
           Always prints the public key.
         `,
         arg(
           '[name=default]',
           'Key identifier for the keypair\'s on-disk names. Defaults to "default"'
-        ).hint('Must match ^[\\w-]+$ — letters, numbers, hyphens, underscores only.'),
-        flag(
-          '--secret',
-          'Also print the private key in plain text — make sure nobody can see your screen'
-        ),
+        ).hint(H.multisig.keysGet.name.text),
+        flag('--secret', 'Also print the private key').hint(H.multisig.keysGet.secret.text),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -187,9 +168,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
         arg(
           '[name=default]',
           'Key identifier for the keypair\'s on-disk names. Defaults to "default"'
-        ).hint(
-          'Prints the path unconditionally — it never checks that a key by this name was actually created.'
-        ),
+        ).hint(H.multisig.keysPaths.name.text),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -208,23 +187,23 @@ module.exports = async (ipc, argv = cmdArgs) => {
         description`
           Import a signing keypair or add a known public key
         `,
-        arg('<name>', 'Name to store this key under. Must not already exist'),
+        arg('<name>', 'Name to store this key under. Must not already exist').hint(
+          H.multisig.keysAdd.name.text
+        ),
         arg('<public-key>', 'Public key — a key path or key string').hint(
-          "Must be z32-encoded (the same format pear multisig keys get prints), whether given as a literal string or a file's contents."
+          H.multisig.keysAdd.publicKey.text
         ),
         arg(
           '[private-key]',
-          'Private key — a key path or key string. A path avoids leaving it in shell history. Omit for public-key only'
-        ),
+          'Private key — a key path or key string. Omit for public-key only'
+        ).hint(H.multisig.keysAdd.privateKey.text),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
       command(
         'remove',
         summary('Remove signing keys'),
-        arg('<name>', 'Name of the key to remove. Permanent — no confirmation, no backup').hint(
-          'Deletes both the public key file and, if present, the private key file.'
-        ),
+        arg('<name>', 'Name of the key to remove').hint(H.multisig.keysRemove.name.text),
         flag('--json', 'Newline delimited JSON output'),
         commands.multisig
       ),
@@ -234,17 +213,17 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'link',
       summary('Print project multisig link'),
       description`
-        The multisig link is derived from the publicKeys, quorum and
-        namespace fields of your project's pear.json.
+        The multisig link is derived from the publicKeys, quorum and 
+        namespace fields of your project's pear.json. 
 
         Run pear help multisig for an example config.
       `,
       flag(
         '--config [./pear.json]',
         "Path to the project's pear.json. Defaults to ./pear.json"
-      ).hint('Needs a multisig field with publicKeys, quorum and namespace.'),
+      ).hint(H.multisig.link.config.text),
       flag('--vanity <vanity>', 'Generate a link starting with this z32 prefix').hint(
-        'Found by generating keys until one starts with what you asked for. More than 4 characters can take a very long time.'
+        H.multisig.link.vanity.text
       ),
       flag('--json', 'Newline delimited JSON output'),
       commands.multisig
@@ -253,43 +232,35 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'request',
       summary('Create a multisig request'),
       description`
-        Create a signing request to synchronize a versioned source link
+        Create a signing request to synchronize a versioned source link 
         onto the project's multisig link, as printed by pear multisig link.
       `,
-      flag('--force', 'Skip sanity checks').hint(
-        "Skips verifying that the source drive's db and blobs cores are reachable and fully seeded at the requested version — omit it and this step can block or fail if the source isn't well seeded."
-      ),
+      flag('--force', 'Skip sanity checks').hint(H.multisig.request.force.text),
       flag(
         '--config [./pear.json]',
         "Path to the project's pear.json. Defaults to ./pear.json"
-      ).hint('Needs a multisig field with publicKeys, quorum and namespace.'),
+      ).hint(H.multisig.request.config.text),
       flag(
         '--peer-update-timeout <milliseconds>',
         'How long to wait for peers to update, in milliseconds'
-      ).hint(
-        'Defaults to 5000 milliseconds. Only matters when --force is not set — it bounds the checks that --force skips entirely.'
-      ),
+      ).hint(H.multisig.request.peerUpdateTimeout.text),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<verlink>', 'Versioned source link to sign off').hint(
-        'A verlink pins an exact version — pear://<fork>.<length>.<key> — unlike a bare link, which always resolves to the latest content.'
-      ),
+      arg('<verlink>', 'Versioned source link to sign off').hint(H.multisig.request.verlink.text),
       commands.multisig
     ),
     command(
       'sign',
       summary('Sign a multisig request'),
       description`
-        Sign a multisig request using a local signing key.
+        Sign a multisig request using a local signing key. 
 
-        The key's public counterpart must be listed in the
-        multisig.publicKeys field of the pear.json at the source link
+        The key's public counterpart must be listed in the 
+        multisig.publicKeys field of the pear.json at the source link 
         supplied to pear multisig request.
       `,
-      arg('<request>', 'As returned by pear multisig request').hint(
-        "Must be the z32-encoded request string, unmodified — it's decoded and structurally validated before signing, so a truncated or edited request is rejected immediately."
-      ),
+      arg('<request>', 'As returned by pear multisig request').hint(H.multisig.sign.request.text),
       arg('[name=default]', 'Local key to sign with, by name. Defaults to "default"').hint(
-        "Selects the encrypted private key file created by pear multisig keys get <name>. You'll be prompted for the exact password used when that key was generated — there's no recovery if you forget it."
+        H.multisig.sign.name.text
       ),
       flag('--json', 'Newline delimited JSON output'),
       commands.multisig
@@ -302,20 +273,18 @@ module.exports = async (ipc, argv = cmdArgs) => {
       flag(
         '--config [./pear.json]',
         "Path to the project's pear.json. Defaults to ./pear.json"
-      ).hint('Needs a multisig field with publicKeys, quorum and namespace.'),
+      ).hint(H.multisig.verify.config.text),
       flag(
         '--peer-update-timeout <milliseconds>',
         'How long to wait for peers to update, in milliseconds'
-      ).hint(
-        'Defaults to 5000 milliseconds. verify always runs as a dry-run, so it never reaches the separate unbounded post-commit seeding wait.'
-      ),
+      ).hint(H.multisig.verify.peerUpdateTimeout.text),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<source-link>', 'Source pear link').hint(
-        'The original (non-multisig) versioned link, not the multisig link.'
+      arg('<source-link>', 'Source Pear link').hint(H.multisig.verify.sourceLink.text),
+      arg('<request>', 'Signing request, as printed by pear multisig request').hint(
+        H.multisig.verify.request.text
       ),
-      arg('<request>', 'Signing request, as printed by pear multisig request'),
       rest('[...responses]', 'Signing responses, as printed by pear multisig sign').hint(
-        'One response per signer who has run pear multisig sign — collect them all before verifying.'
+        H.multisig.verify.responses.text
       ),
       commands.multisig
     ),
@@ -326,21 +295,19 @@ module.exports = async (ipc, argv = cmdArgs) => {
       flag(
         '--config [./pear.json]',
         "Path to the project's pear.json. Defaults to ./pear.json"
-      ).hint('Needs a multisig field with publicKeys, quorum and namespace.'),
+      ).hint(H.multisig.commit.config.text),
       flag('--force-dangerous', 'Advanced. Careful, this may break the core').hide(),
       flag(
         '--peer-update-timeout <milliseconds>',
         'How long to wait for peers to update, in milliseconds'
-      ).hint(
-        'Defaults to 5000 milliseconds, and bounds only the checks that run before the commit. The wait for remote seeders afterwards takes no timeout at all and can block indefinitely — on any commit, not just the first. Ctrl-C is the only way out.'
-      ),
+      ).hint(H.multisig.commit.peerUpdateTimeout.text),
       flag('--json', 'Newline delimited JSON output'),
-      arg('<source-link>', 'Source pear link').hint(
-        'The original (non-multisig) versioned link, not the multisig link.'
+      arg('<source-link>', 'Source Pear link').hint(H.multisig.commit.sourceLink.text),
+      arg('<request>', 'Signing request, as printed by pear multisig request').hint(
+        H.multisig.commit.request.text
       ),
-      arg('<request>', 'Signing request, as printed by pear multisig request'),
       rest('[...responses]', 'Signing responses, as printed by pear multisig sign').hint(
-        'One response per signer who has run pear multisig sign — collect them all before committing.'
+        H.multisig.commit.responses.text
       ),
       commands.multisig
     ),
@@ -351,32 +318,20 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'info',
     summary('View project information'),
     description`
-      View information about a project.
+      View information about a project. 
 
-      Supply a link to inspect a specific project, or omit it to view
+      Supply a link to inspect a specific project, or omit it to view 
       platform information.
     `,
-    arg('[link]', 'Project to view info for').hint(
-      'Must be a pear:// link with a drive key — file: URLs and local directory paths (which dump accepts) are rejected.'
-    ),
-    arg('[dir=.]', 'Project directory path').hint(
-      'Currently has no effect on the output — info never reads this value; it only inspects the given link, or platform info when none is given.'
-    ),
+    arg('[link]', 'Project to view info for').hint(H.info.link.text),
+    arg('[dir=.]', 'Project directory path').hint(H.info.dir.text),
     flag('--changelog', 'View changelog only').hide(),
     flag('--full-changelog', 'Full record of changes').hide(),
     flag('--changelog-max <n>', 'Maximum changelog entries').hide(),
-    flag('--metadata', 'Print the project metadata').hint(
-      'Selects sections along with --key and --multisig; whichever you name, only those print, and metadata prints between them. --manifest is different: it prints the manifest and stops, so pairing it with --metadata gives you the manifest and nothing else.'
-    ),
-    flag('--manifest', 'Print the app manifest').hint(
-      'Not a section selector like --key, --metadata and --multisig — it prints the manifest and stops there. Pair it with --key and the key still prints first; pair it with --metadata or --multisig and you get the manifest alone.'
-    ),
-    flag('--multisig', 'Print the multisig quorum and signing keys').hint(
-      'Selects sections along with --key and --metadata; whichever you name, only those print, and multisig prints last. --manifest is different: it prints the manifest and stops, so pairing it with --multisig gives you the manifest and nothing else.'
-    ),
-    flag('--key', 'Print the view key').hint(
-      'Selects sections along with --metadata and --multisig; whichever you name, only those print, and the key prints first. --manifest is different: it prints the manifest and stops, but the key still appears above it.'
-    ),
+    flag('--metadata', 'Print the project metadata').hint(H.info.metadata.text),
+    flag('--manifest', 'Print the app manifest').hint(H.info.manifest.text),
+    flag('--multisig', 'Print the multisig quorum and signing keys').hint(H.info.multisig.text),
+    flag('--key', 'Print the view key').hint(H.info.key.text),
     flag('--json', 'Newline delimited JSON output'),
     commands.info
   )
@@ -384,44 +339,32 @@ module.exports = async (ipc, argv = cmdArgs) => {
   const dump = command(
     'dump',
     summary('Synchronize files from a link to a directory'),
-    arg('<link>', 'Link to dump from. May be file:, pear: or dir').hint(
-      'A pear:// link, a file: URL, or a plain local directory path.'
-    ),
-    arg('[dir]', 'Directory path to dump to. Use - for output-only').hint(
-      'Use - instead of a path to print to stdout rather than writing files.'
-    ),
-    flag('--dry-run|-d', 'Preview without writing any changes').hint(
-      'No effect when <dir> is - or --list is set — those modes only read and print, so there is nothing being written to skip.'
-    ),
+    arg('<link>', 'Link to dump from. May be file:, pear: or dir').hint(H.dump.link.text),
+    arg('[dir]', 'Directory path to dump to. Use - for output-only').hint(H.dump.dir.text),
+    flag('--dry-run|-d', 'Preview without writing any changes').hint(H.dump.dryRun.text),
     flag('--checkout <n>', 'Dump the project as it was at this version length').hint(
-      'n is the length segment of a verlink (pear://<fork>.<length>.<key>).'
+      H.dump.checkout.text
     ),
-    flag('--only <paths>', 'Only dump these comma-separated paths').hint(
-      'Passing this alone still deletes matched files in <dir> that no longer exist at <link> — add --no-prune too if you want to filter without removing anything.'
-    ),
-    flag('--force|-f', 'Force overwrite existing files').hint(
-      'Only matters if <dir> already has files in it — an empty or not-yet-created <dir> never needs this.'
-    ),
+    flag('--only <paths>', 'Only dump these comma-separated paths').hint(H.dump.only.text),
+    flag('--force|-f', 'Force overwrite existing files').hint(H.dump.force.text),
     flag('--list', 'List the paths inside the link instead of writing any files').hint(
-      '<dir> is ignored when this is set — it always prints instead of writing.'
+      H.dump.list.text
     ),
     flag('--no-prune', 'Keep destination files that are missing from the source').hint(
-      'Pruning is on unless you set this, so a plain dump deletes anything in <dir> that is not at <link>. No effect when <dir> is - or --list is set — those modes only read and print, so nothing is ever deleted either way.'
+      H.dump.noPrune.text
     ),
     flag('--json', 'Newline delimited JSON output'),
     validate((cmd) => {
       if (cmd.flags.list) cmd.args.dir = '-'
       return true
     }),
-    validate('<dir> is required', (cmd) => !!cmd.args.dir), // TODO fix in paparam
+    validate('<dir> is required', (cmd) => !!cmd.args.dir),
     commands.dump
   )
 
   const install = command(
     'install',
-    arg('<link>', 'Pear link origin to install from').hint(
-      'Must be a bare pear:// origin link with no path segment — a link pointing at a sub-path inside the drive is rejected.'
-    ),
+    arg('<link>', 'Pear link origin to install from').hint(H.install.link.text),
     require('pear-install/package.json').command,
     commands.install
   )
@@ -429,9 +372,7 @@ module.exports = async (ipc, argv = cmdArgs) => {
   const data = command(
     'data',
     summary('Explore platform database'),
-    command('dht', summary('DHT known-nodes cache'), commands.data).hint(
-      'Lists nodes this platform has already discovered. Distributed Hash Table, the peer-discovery network Pear nodes use to find each other.'
-    ),
+    command('dht', summary('DHT known-nodes cache'), commands.data).hint(H.data.dht.text),
     command('multisig', summary('Multisig records'), commands.data),
     flag('--json', 'Newline delimited JSON output'),
     (cmd) => {
@@ -443,26 +384,18 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'changelog',
     summary('View project changelog'),
     description`
-      View a project's changelog.
+      View a project's changelog. 
 
-      Supply a link to inspect a specific project, or omit it to view
+      Supply a link to inspect a specific project, or omit it to view 
       Pear's own changelog.
     `,
-    arg('[link]', 'Project to view changelog of').hint(
-      'Must be a pear:// link that resolves to a real drive key — a local directory path or file: URL is rejected here, unlike pear dump.'
-    ),
-    flag('--max|-m <n=10>', 'Maximum number of entries to show').hint(
-      'Must be a whole number. Also ignored when --full is set, which shows every matching entry regardless of this limit.'
-    ),
+    arg('[link]', 'Project to view changelog of').hint(H.changelog.link.text),
+    flag('--max|-m <n=10>', 'Maximum number of entries to show').hint(H.changelog.max.text),
     flag(
       '--of <semver=^*>',
       'Only show entries matching this semver range. Default: latest major'
-    ).hint(
-      'Accepts npm-style semver range syntax — e.g. ^2.0.0, ~1.4.0, 1.x.x, *, or multiple ranges joined with ||.'
-    ),
-    flag('--full', 'Show entire changelog').hint(
-      "Also changes what 'entire' means: with no --of override, every version in the file is included, not just the latest major."
-    ),
+    ).hint(H.changelog.of.text),
+    flag('--full', 'Show entire changelog').hint(H.changelog.full.text),
     flag('--json', 'Newline delimited JSON output'),
     commands.changelog
   )
@@ -471,18 +404,18 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'sidecar',
     command('shutdown', commands.sidecar, summary('Shutdown running sidecar')),
     command('inspect', commands.sidecar, summary('Enable running sidecar inspector')).hint(
-      'Opens the sidecar for remote debugging via Chrome DevTools. The inspector key it prints must be kept secret.'
+      H.sidecar.inspect.text
     ),
     summary('Advanced. Run sidecar in terminal'),
     description`
-      The sidecar is a local IPC server that brokers corestore access
-      for every running Pear app.
+      The sidecar is a local IPC server that brokers corestore access 
+      for every running Pear app. 
 
-      Running pear sidecar shuts down any existing sidecar and takes
+      Running pear sidecar shuts down any existing sidecar and takes 
       over as the new one, staying attached to this terminal.
     `,
     flag('--log-level <level>', 'Verbosity to log at — 0=off, 1=error, 2=info, or 3=trace').hint(
-      'Case-insensitive. Also accepts the 3-letter form, e.g. INF.'
+      H.sidecar.logLevel.text
     ),
     flag('--dht-bootstrap <nodes>').hide(),
     commands.sidecar
@@ -494,14 +427,12 @@ module.exports = async (ipc, argv = cmdArgs) => {
     command(
       'cores',
       summary('Clear corestore cores'),
-      flag('--force|-f', 'Clear writable cores without confirmation'),
+      flag('--force|-f', 'Clear writable cores without confirmation').hint(H.gc.cores.force.text),
       arg('<link|name>', 'Clear the cores belonging to this link or app name').hint(
-        "Clears this link's core, then its content core if the first one cleared. A core you can write to, or one the local corestore has never seen, is skipped rather than treated as an error — the output says which."
+        H.gc.cores.linkOrName.text
       ),
       commands.gc
-    ).hint(
-      "A core is a single append-only log in Pear's local corestore. This deletes the blocks one core has stored on disk, freeing that space; the core itself stays in the corestore."
-    ),
+    ).hint(H.gc.cores.$.text),
     flag('--json', 'Newline delimited JSON output'),
     () => {
       console.log(gc.help())
@@ -512,12 +443,10 @@ module.exports = async (ipc, argv = cmdArgs) => {
     'cores',
     summary('List platform cores'),
     description`
-      Lists the cores in the platform corestore.
+      Lists the cores in the platform corestore. 
       Empty cores are omitted unless --all-cores is set.
     `,
-    flag('--all-cores', 'List all cores, including empty cores').hint(
-      'An empty core has been allocated but never written to.'
-    ),
+    flag('--all-cores', 'List all cores, including empty cores').hint(H.cores.allCores.text),
     flag('--json', 'Newline delimited JSON output'),
     commands.cores
   )
@@ -529,10 +458,10 @@ module.exports = async (ipc, argv = cmdArgs) => {
       'start',
       summary('Start the blind relay'),
       flag('--no-tty', 'Print plain log lines instead of the live terminal UI').hint(
-        'In the interactive form this appears as an unchecked "tty" box; checking it passes --no-tty and turns off the live UI.'
+        H.blindRelay.start.noTty.text
       ),
       flag('--stats-interval <milliseconds>', 'Stats refresh interval in milliseconds').hint(
-        'Defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under --no-tty.'
+        H.blindRelay.start.statsInterval.text
       ),
       flag('--json', 'Newline delimited JSON output'),
       commands.blindRelay
@@ -545,16 +474,16 @@ module.exports = async (ipc, argv = cmdArgs) => {
   const versions = command(
     'versions',
     summary('View dependency versions'),
-    flag('--modules|-m', 'Include module versions').hint(
-      "Lists every package in Pear's own bundled dependencies (bare-*, hypercore-*, corestore, etc.) — not the dependencies of your own project."
-    ),
+    flag('--modules|-m', 'Include module versions').hint(H.versions.modules.text),
     flag('--json', 'Newline delimited JSON output'),
     commands.versions
   )
 
   const help = command(
     'help',
-    arg('[command]', 'Command to show help for. Omit to show the full overview'),
+    arg('[command]', 'Command to show help for. Omit to show the full overview').hint(
+      H.help.command.text
+    ),
     summary('View help for command'),
     (h) => {
       if (h.args.command) console.log(cmd.help(h.args.command))
